@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tapo PTZ Control</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="panel">
+      <p class="eyebrow">Local Network Control</p>
+      <h1>Tapo PTZ Control</h1>
+      <p class="subtitle">
+        Use tap mode for short nudges or hold mode for continuous movement.
+      </p>
+
+      <div class="status-row">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Checking camera status...</span>
+      </div>
+
+      <div class="mode-switch" role="radiogroup" aria-label="Control mode">
+        <button class="mode-button is-active" data-mode="tap" type="button">Tap</button>
+        <button class="mode-button" data-mode="continuous" type="button">Hold 100%</button>
+      </div>
+
+      <div class="pad" aria-label="Directional controls">
+        <button class="direction direction-up" data-direction="up" aria-label="Move up" type="button">▲</button>
+        <button class="direction direction-left" data-direction="left" aria-label="Move left" type="button">◄</button>
+        <button class="direction direction-right" data-direction="right" aria-label="Move right" type="button">►</button>
+        <button class="direction direction-down" data-direction="down" aria-label="Move down" type="button">▼</button>
+      </div>
+
+      <div class="actions">
+        <button class="stop-button" id="stop-button" type="button">Stop</button>
+      </div>
+
+      <p class="hint" id="hint-text">Tap a direction for a short step.</p>
+      <p class="feedback" id="feedback" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

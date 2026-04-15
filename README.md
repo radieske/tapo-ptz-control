@@ -1,14 +1,14 @@
-# Tapo C500 — PTZ Control via Terminal (ONVIF)
+﻿# Tapo C500 PTZ Control
 
-Control the pan/tilt of the **TP-Link Tapo C500** camera directly from your terminal using the **ONVIF** protocol via the `onvif-zeep` library.
+Control the pan/tilt of the **TP-Link Tapo C500** camera on your **local network** using ONVIF, either from the terminal or from a simple web interface served by a Python backend.
 
 ---
 
 ## Requirements
 
 - Python 3.10+
-- Camera and computer on the **same local network**
-- **Camera Account** enabled in the Tapo app:
+- Camera and computer on the same local network
+- Camera Account enabled in the Tapo app:
   `Settings > Advanced Settings > Camera Account`
 
 ---
@@ -16,16 +16,13 @@ Control the pan/tilt of the **TP-Link Tapo C500** camera directly from your term
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/tapo-ptz-control.git
+git clone https://github.com/radieske/tapo-ptz-control.git
 cd tapo-ptz-control
 
-# (Optional) Create a virtual environment
 python -m venv .venv
 source .venv/bin/activate      # Linux/macOS
 .venv\Scripts\activate         # Windows
 
-# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -33,74 +30,116 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Credentials are read from **environment variables** — never hardcode passwords in the source code.
+Copy the example file and fill in your camera credentials:
 
 ```bash
-# Copy the example file and fill in your credentials
 cp .env.example .env
 ```
 
-Then edit `.env` with your values.
+Available variables:
 
-### Available variables
-
-| Variable        | Default         | Description                                          |
-|-----------------|-----------------|------------------------------------------------------|
-| `TAPO_IP`       | `192.168.1.4`   | Camera IP address on the local network               |
-| `TAPO_PORT`     | `2020`          | Camera ONVIF port                                    |
-| `TAPO_USER`     | `admin`         | Camera Account username                              |
-| `TAPO_PASS`     | *(required)*    | Camera Account password                              |
-| `TAPO_STEP`     | `0.1`           | Short step intensity (0.0 – 1.0)                     |
-| `TAPO_SPEED`    | `0.5`           | Continuous move speed (0.0 – 1.0)                    |
-| `TAPO_TOUCH_MS` | `100`           | Manual touch duration in ms (RelativeMove fallback)  |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TAPO_IP` | `192.168.1.4` | Camera IP address on the local network |
+| `TAPO_PORT` | `2020` | Camera ONVIF port |
+| `TAPO_USER` | `admin` | Camera Account username |
+| `TAPO_PASS` | required | Camera Account password |
+| `TAPO_STEP` | `0.1` | Short step intensity |
+| `TAPO_SPEED` | `0.5` | Continuous move speed |
+| `TAPO_TOUCH_MS` | `100` | Manual touch fallback duration in milliseconds |
+| `TAPO_SAFETY_TIMEOUT_SECS` | `5` | Automatic stop timeout for continuous mode |
 
 ---
 
 ## Usage
 
+### CLI
+
 ```bash
-python tapo_control.py
+python -m cli.tapo_control
 ```
 
-### Commands
+CLI commands:
 
-| Key     | Action                        |
-|---------|-------------------------------|
-| `w`     | Tilt up (short step)          |
-| `s`     | Tilt down (short step)        |
-| `a`     | Pan left (short step)         |
-| `d`     | Pan right (short step)        |
-| `W`     | Tilt up (continuous)          |
-| `S`     | Tilt down (continuous)        |
-| `A`     | Pan left (continuous)         |
-| `D`     | Pan right (continuous)        |
-| `b / B` | Stop motor                    |
-| `q`     | Quit                          |
+| Key | Action |
+|-----|--------|
+| `w` | Tilt up (short step) |
+| `s` | Tilt down (short step) |
+| `a` | Pan left (short step) |
+| `d` | Pan right (short step) |
+| `W` | Tilt up (continuous) |
+| `S` | Tilt down (continuous) |
+| `A` | Pan left (continuous) |
+| `D` | Pan right (continuous) |
+| `b / B` | Stop motor |
+| `q` | Quit |
+
+### Web UI
+
+You do not need to start the CLI first. The backend already talks directly to the camera and serves the frontend.
+
+Start the web application with a single command:
+
+```bash
+python run.py
+```
+
+Or, if you prefer, the raw Uvicorn command:
+
+```bash
+python -m uvicorn backend.app:app --host 0.0.0.0 --port 8000
+```
+
+Open `http://localhost:8000` in the same machine or another device on the same LAN.
+
+Available API routes:
+
+| Method | Route | Action |
+|--------|-------|--------|
+| `GET` | `/status` | Check camera connectivity |
+| `POST` | `/move/step` | Short step movement |
+| `POST` | `/move/continuous` | Continuous movement |
+| `POST` | `/stop` | Stop the motor |
+
+The frontend is served by FastAPI from the `frontend/` directory.
+
+Optional web env vars:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TAPO_WEB_HOST` | `0.0.0.0` | Host used by the web server |
+| `TAPO_WEB_PORT` | `8000` | Port used by the web server |
+| `TAPO_WEB_RELOAD` | `false` | Enables auto reload during development |
 
 ---
 
 ## Troubleshooting
 
-**`Authority Failure` on connect**
-The ONVIF protocol requires the computer and camera clocks to be in sync (within ~5 seconds). Make sure NTP synchronization is enabled on your system.
+**`Authority Failure` on connect**  
+The computer and camera clocks must stay in sync. Make sure NTP synchronization is enabled.
 
-**`Connection refused` or timeout**
-Check that the IP and port are correct and that both devices are on the same network. The default ONVIF port for the Tapo C500 is `2020`.
+**`Connection refused` or timeout**  
+Check the IP, port, and that both devices are on the same network.
 
-**`RelativeMove not supported`**
-The script automatically falls back to a manual touch (ContinuousMove for 100 ms). You can adjust the duration via `TAPO_TOUCH_MS`.
+**`RelativeMove not supported`**  
+The controller falls back to a short `ContinuousMove`. Adjust `TAPO_TOUCH_MS` if needed.
+
+**Continuous mode keeps moving**  
+The backend automatically sends a stop after `TAPO_SAFETY_TIMEOUT_SECS` seconds without a fresh movement command.
 
 ---
 
-## Project structure
+## Project Structure
 
-```
+```text
 tapo-ptz-control/
-├── tapo_control.py   # Main script
-├── requirements.txt  # Python dependencies
-├── .env.example      # Environment variable template
-├── .gitignore        # Git ignore rules
-└── README.md         # This file
+├── backend/         # FastAPI HTTP API
+├── cli/             # Terminal entrypoint
+├── frontend/        # Static web interface
+├── shared/          # Shared ONVIF controller/service code
+├── run.py           # Single-command web launcher
+├── requirements.txt
+└── .env.example
 ```
 
 ---
