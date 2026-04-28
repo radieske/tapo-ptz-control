@@ -12,8 +12,19 @@
       <p class="eyebrow">Local Network Control</p>
       <h1>Tapo PTZ Control</h1>
       <p class="subtitle">
-        Use tap mode for short nudges or hold mode for continuous movement.
+        Use tap mode for short nudges or hold mode for continuous movement, with the live view in the same app.
       </p>
+
+      <section class="viewer" aria-label="Live camera stream">
+        <div class="viewer-header">
+          <p class="viewer-title">Live View</p>
+          <button class="viewer-button" id="reload-stream-button" type="button">Reload video</button>
+        </div>
+        <div class="viewer-frame">
+          <img class="stream-view" id="stream-view" alt="Live camera stream">
+        </div>
+        <p class="stream-status" id="stream-status">Connecting video...</p>
+      </section>
 
       <div class="status-row">
         <span class="status-dot" id="status-dot"></span>

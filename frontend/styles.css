@@ -40,7 +40,7 @@ button {
 }
 
 .panel {
-  width: min(100%, 460px);
+  width: min(100%, 760px);
   padding: 28px;
   border: 1px solid var(--panel-border);
   border-radius: 28px;
@@ -72,6 +72,69 @@ h1 {
 
 .subtitle {
   margin: 12px 0 22px;
+}
+
+.viewer {
+  margin-bottom: 22px;
+}
+
+.viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.viewer-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.viewer-button {
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: var(--accent-strong);
+  background: rgba(47, 111, 79, 0.12);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.viewer-button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.viewer-frame {
+  overflow: hidden;
+  border: 1px solid rgba(32, 49, 38, 0.12);
+  border-radius: 18px;
+  background: #0f1712;
+  aspect-ratio: 16 / 9;
+}
+
+.stream-view {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stream-status {
+  min-height: 1.4em;
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.stream-status.is-online {
+  color: var(--ok);
+}
+
+.stream-status.is-error {
+  color: var(--danger);
 }
 
 .status-row {
@@ -199,6 +262,11 @@ h1 {
   .panel {
     padding: 20px;
     border-radius: 22px;
+  }
+
+  .viewer-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .pad {

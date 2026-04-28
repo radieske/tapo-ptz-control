@@ -8,6 +8,9 @@ const elements = {
   statusText: document.getElementById("status-text"),
   hintText: document.getElementById("hint-text"),
   feedback: document.getElementById("feedback"),
+  streamView: document.getElementById("stream-view"),
+  streamStatus: document.getElementById("stream-status"),
+  reloadStreamButton: document.getElementById("reload-stream-button"),
   stopButton: document.getElementById("stop-button"),
   modeButtons: Array.from(document.querySelectorAll("[data-mode]")),
   directionButtons: Array.from(document.querySelectorAll("[data-direction]")),
@@ -48,6 +51,22 @@ function setStatus(kind, text) {
     elements.statusDot.classList.add("is-error");
   }
   elements.statusText.textContent = text;
+}
+
+function setStreamStatus(kind, text) {
+  elements.streamStatus.classList.remove("is-online", "is-error");
+  if (kind === "online") {
+    elements.streamStatus.classList.add("is-online");
+  }
+  if (kind === "error") {
+    elements.streamStatus.classList.add("is-error");
+  }
+  elements.streamStatus.textContent = text;
+}
+
+function reloadStream() {
+  setStreamStatus("loading", "Connecting video...");
+  elements.streamView.src = `/stream.mjpeg?ts=${Date.now()}`;
 }
 
 async function refreshStatus() {
@@ -179,5 +198,16 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+elements.streamView.addEventListener("load", () => {
+  setStreamStatus("online", "Live video connected.");
+});
+
+elements.streamView.addEventListener("error", () => {
+  setStreamStatus("error", "Could not load the video stream.");
+});
+
+elements.reloadStreamButton.addEventListener("click", reloadStream);
+
 setMode("tap");
 void refreshStatus();
+reloadStream();

@@ -2,10 +2,11 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from shared.stream import TapoStreamService
 from shared.tapo import TapoService
 
 
@@ -14,6 +15,7 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 
 app = FastAPI(title="Tapo PTZ Control API", version="1.0.0")
 service = TapoService()
+stream_service = TapoStreamService()
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,6 +64,19 @@ def stop() -> dict[str, object]:
         return service.stop()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/stream.mjpeg")
+def stream_mjpeg() -> StreamingResponse:
+    try:
+        stream_service.probe()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return StreamingResponse(
+        stream_service.mjpeg_chunks(),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+    )
 
 
 if FRONTEND_DIR.exists():
