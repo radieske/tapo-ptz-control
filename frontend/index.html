@@ -7,48 +7,51 @@
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
-  <main class="app-shell">
-    <section class="panel">
-      <p class="eyebrow">Local Network Control</p>
-      <h1>Tapo PTZ Control</h1>
-      <p class="subtitle">
-        Use tap mode for short nudges or hold mode for continuous movement, with the live view in the same app.
-      </p>
+  <main class="viewer-shell">
+    <section class="viewer-stage" aria-label="Live camera stream">
+      <img class="stream-view" id="stream-view" alt="Live camera stream">
 
-      <section class="viewer" aria-label="Live camera stream">
-        <div class="viewer-header">
-          <p class="viewer-title">Live View</p>
-          <button class="viewer-button" id="reload-stream-button" type="button">Reload video</button>
+      <section class="control-cluster control-cluster-left" aria-label="Tap controls">
+        <div class="control-pad">
+          <button class="control-button control-button-step direction-up" data-action="step" data-direction="up" aria-label="Tap up" type="button">
+            <span class="glyph glyph-arrow">&#9651;</span>
+          </button>
+          <button class="control-button control-button-step direction-left" data-action="step" data-direction="left" aria-label="Tap left" type="button">
+            <span class="glyph glyph-arrow">&#9665;</span>
+          </button>
+          <button class="control-button control-button-step direction-right" data-action="step" data-direction="right" aria-label="Tap right" type="button">
+            <span class="glyph glyph-arrow">&#9655;</span>
+          </button>
+          <button class="control-button control-button-step direction-down" data-action="step" data-direction="down" aria-label="Tap down" type="button">
+            <span class="glyph glyph-arrow">&#9661;</span>
+          </button>
         </div>
-        <div class="viewer-frame">
-          <img class="stream-view" id="stream-view" alt="Live camera stream">
-        </div>
-        <p class="stream-status" id="stream-status">Connecting video...</p>
       </section>
 
-      <div class="status-row">
-        <span class="status-dot" id="status-dot"></span>
-        <span id="status-text">Checking camera status...</span>
-      </div>
+      <section class="control-cluster control-cluster-right" aria-label="Extreme controls">
+        <div class="control-pad">
+          <button class="control-button control-button-extreme direction-up" data-action="extreme" data-direction="up" aria-label="Move up to the limit" type="button">
+            <span class="glyph glyph-arrow">&#9650;</span>
+          </button>
+          <button class="control-button control-button-extreme direction-left" data-action="extreme" data-direction="left" aria-label="Move left to the limit" type="button">
+            <span class="glyph glyph-arrow">&#9664;</span>
+          </button>
+          <button class="control-button control-button-extreme direction-right" data-action="extreme" data-direction="right" aria-label="Move right to the limit" type="button">
+            <span class="glyph glyph-arrow">&#9654;</span>
+          </button>
+          <button class="control-button control-button-extreme direction-down" data-action="extreme" data-direction="down" aria-label="Move down to the limit" type="button">
+            <span class="glyph glyph-arrow">&#9660;</span>
+          </button>
+        </div>
+      </section>
 
-      <div class="mode-switch" role="radiogroup" aria-label="Control mode">
-        <button class="mode-button is-active" data-mode="tap" type="button">Tap</button>
-        <button class="mode-button" data-mode="continuous" type="button">Hold 100%</button>
-      </div>
+      <section class="patrol-bar" aria-label="Patrol controls">
+        <button class="patrol-button" data-patrol-axis="horizontal" type="button">Patrol H</button>
+        <button class="patrol-button" data-patrol-axis="vertical" type="button">Patrol V</button>
+        <button class="patrol-button patrol-button-stop" id="patrol-stop-button" type="button">Stop</button>
+      </section>
 
-      <div class="pad" aria-label="Directional controls">
-        <button class="direction direction-up" data-direction="up" aria-label="Move up" type="button">▲</button>
-        <button class="direction direction-left" data-direction="left" aria-label="Move left" type="button">◄</button>
-        <button class="direction direction-right" data-direction="right" aria-label="Move right" type="button">►</button>
-        <button class="direction direction-down" data-direction="down" aria-label="Move down" type="button">▼</button>
-      </div>
-
-      <div class="actions">
-        <button class="stop-button" id="stop-button" type="button">Stop</button>
-      </div>
-
-      <p class="hint" id="hint-text">Tap a direction for a short step.</p>
-      <p class="feedback" id="feedback" aria-live="polite"></p>
+      <p class="sr-only" id="stream-status" aria-live="polite">Connecting video...</p>
     </section>
   </main>
 

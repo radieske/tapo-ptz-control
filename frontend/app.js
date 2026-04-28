@@ -1,20 +1,35 @@
 const state = {
-  mode: "tap",
-  activeDirection: null,
+  pressedKeys: new Set(),
+  activePatrolAxis: null,
 };
 
 const elements = {
-  statusDot: document.getElementById("status-dot"),
-  statusText: document.getElementById("status-text"),
-  hintText: document.getElementById("hint-text"),
-  feedback: document.getElementById("feedback"),
   streamView: document.getElementById("stream-view"),
   streamStatus: document.getElementById("stream-status"),
-  reloadStreamButton: document.getElementById("reload-stream-button"),
-  stopButton: document.getElementById("stop-button"),
-  modeButtons: Array.from(document.querySelectorAll("[data-mode]")),
-  directionButtons: Array.from(document.querySelectorAll("[data-direction]")),
+  controlButtons: Array.from(document.querySelectorAll("[data-action][data-direction]")),
+  patrolButtons: Array.from(document.querySelectorAll("[data-patrol-axis]")),
+  patrolStopButton: document.getElementById("patrol-stop-button"),
 };
+
+const keyDirectionMap = new Map([
+  ["KeyW", "up"],
+  ["ArrowUp", "up"],
+  ["KeyA", "left"],
+  ["ArrowLeft", "left"],
+  ["KeyS", "down"],
+  ["ArrowDown", "down"],
+  ["KeyD", "right"],
+  ["ArrowRight", "right"],
+]);
+
+const stepButtonsByDirection = new Map(
+  elements.controlButtons
+    .filter((button) => button.dataset.action === "step")
+    .map((button) => [button.dataset.direction, button]),
+);
+
+let reconnectTimer = null;
+let statusPollTimer = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -30,184 +45,230 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function setMode(mode) {
-  state.mode = mode;
-  elements.modeButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.mode === mode);
-  });
-  elements.hintText.textContent =
-    mode === "tap"
-      ? "Tap a direction for a short step."
-      : "Press and hold a direction to keep moving. Release to stop.";
-  elements.feedback.textContent = "";
-}
-
-function setStatus(kind, text) {
-  elements.statusDot.classList.remove("is-online", "is-error");
-  if (kind === "online") {
-    elements.statusDot.classList.add("is-online");
-  }
-  if (kind === "error") {
-    elements.statusDot.classList.add("is-error");
-  }
-  elements.statusText.textContent = text;
-}
-
-function setStreamStatus(kind, text) {
-  elements.streamStatus.classList.remove("is-online", "is-error");
-  if (kind === "online") {
-    elements.streamStatus.classList.add("is-online");
-  }
-  if (kind === "error") {
-    elements.streamStatus.classList.add("is-error");
-  }
+function setStreamStatus(text) {
   elements.streamStatus.textContent = text;
 }
 
+function setPatrolState(axis) {
+  state.activePatrolAxis = axis;
+  elements.patrolButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.patrolAxis === axis);
+  });
+}
+
+function clearPatrolState() {
+  setPatrolState(null);
+}
+
+function stopStatusPolling() {
+  if (statusPollTimer !== null) {
+    window.clearInterval(statusPollTimer);
+    statusPollTimer = null;
+  }
+}
+
+function ensureStatusPolling() {
+  if (statusPollTimer !== null) {
+    return;
+  }
+
+  statusPollTimer = window.setInterval(() => {
+    void refreshStatus();
+  }, 2000);
+}
+
+function flashButton(button, durationMs = 140) {
+  button.classList.add("is-active");
+  window.setTimeout(() => {
+    button.classList.remove("is-active");
+  }, durationMs);
+}
+
+function scheduleStreamReconnect() {
+  if (reconnectTimer) {
+    return;
+  }
+
+  reconnectTimer = window.setTimeout(() => {
+    reconnectTimer = null;
+    reloadStream();
+  }, 2000);
+}
+
 function reloadStream() {
-  setStreamStatus("loading", "Connecting video...");
+  if (reconnectTimer) {
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  setStreamStatus("Connecting video...");
   elements.streamView.src = `/stream.mjpeg?ts=${Date.now()}`;
+}
+
+async function sendStep(direction) {
+  await api("/move/step", {
+    method: "POST",
+    body: JSON.stringify({ direction }),
+  });
+}
+
+async function sendExtreme(direction) {
+  await api("/move/extreme", {
+    method: "POST",
+    body: JSON.stringify({ direction }),
+  });
+}
+
+async function sendStop() {
+  await api("/stop", { method: "POST" });
+}
+
+async function sendPatrolStart(axis) {
+  await api("/patrol/start", {
+    method: "POST",
+    body: JSON.stringify({ axis }),
+  });
 }
 
 async function refreshStatus() {
   try {
     const data = await api("/status", { method: "GET" });
-    setStatus("online", `Connected to ${data.camera.ip}:${data.camera.port}`);
+    if (data.patrol?.running) {
+      setPatrolState(data.patrol.axis || null);
+      ensureStatusPolling();
+      return;
+    }
+    clearPatrolState();
+    stopStatusPolling();
   } catch (error) {
-    setStatus("error", `Camera unavailable: ${error.message}`);
+    console.error(error.message);
   }
 }
 
-async function sendStep(direction) {
-  const data = await api("/move/step", {
-    method: "POST",
-    body: JSON.stringify({ direction }),
-  });
-  elements.feedback.textContent = `Step ${data.direction}.`;
-}
+async function handleStep(button) {
+  clearPatrolState();
+  flashButton(button);
 
-async function sendContinuous(direction) {
-  const data = await api("/move/continuous", {
-    method: "POST",
-    body: JSON.stringify({ direction }),
-  });
-  elements.feedback.textContent = `Moving ${data.direction}. Safety stop in ${data.timeout_secs}s.`;
-}
-
-async function sendStop() {
-  const data = await api("/stop", { method: "POST" });
-  elements.feedback.textContent = data.ok ? "Motor stopped." : "";
-}
-
-async function handleTap(button) {
   try {
     await sendStep(button.dataset.direction);
   } catch (error) {
-    elements.feedback.textContent = error.message;
+    console.error(error.message);
   }
 }
 
-async function startContinuous(button) {
-  const direction = button.dataset.direction;
-  if (state.activeDirection === direction) {
-    return;
-  }
-
-  state.activeDirection = direction;
-  button.classList.add("is-pressed");
+async function handleExtreme(button) {
+  clearPatrolState();
+  flashButton(button, 220);
 
   try {
-    await sendContinuous(direction);
+    await sendExtreme(button.dataset.direction);
   } catch (error) {
-    elements.feedback.textContent = error.message;
-    state.activeDirection = null;
-    button.classList.remove("is-pressed");
+    console.error(error.message);
   }
 }
 
-async function stopContinuous() {
-  if (!state.activeDirection) {
+async function triggerKeyboardStep(direction) {
+  const button = stepButtonsByDirection.get(direction);
+  if (!button) {
     return;
   }
 
-  state.activeDirection = null;
-  elements.directionButtons.forEach((button) => button.classList.remove("is-pressed"));
+  await handleStep(button);
+}
+
+async function handlePatrolStart(button) {
+  const axis = button.dataset.patrolAxis;
+  flashButton(button, 220);
+
+  try {
+    await sendPatrolStart(axis);
+    setPatrolState(axis);
+    ensureStatusPolling();
+  } catch (error) {
+    console.error(error.message);
+  }
+}
+
+async function handleStop() {
+  clearPatrolState();
+  stopStatusPolling();
 
   try {
     await sendStop();
   } catch (error) {
-    elements.feedback.textContent = error.message;
+    console.error(error.message);
   }
 }
 
-function bindDirectionButton(button) {
+function bindControlButton(button) {
   button.addEventListener("click", async () => {
-    if (state.mode !== "tap") {
+    if (button.dataset.action === "step") {
+      await handleStep(button);
       return;
     }
-    await handleTap(button);
+
+    await handleExtreme(button);
   });
-
-  const start = async (event) => {
-    if (state.mode !== "continuous") {
-      return;
-    }
-    event.preventDefault();
-    await startContinuous(button);
-  };
-
-  const stop = async (event) => {
-    if (state.mode !== "continuous") {
-      return;
-    }
-    event.preventDefault();
-    await stopContinuous();
-  };
-
-  button.addEventListener("mousedown", start);
-  button.addEventListener("mouseup", stop);
-  button.addEventListener("mouseleave", stop);
-  button.addEventListener("touchstart", start, { passive: false });
-  button.addEventListener("touchend", stop, { passive: false });
-  button.addEventListener("touchcancel", stop, { passive: false });
 }
 
-elements.modeButtons.forEach((button) => {
-  button.addEventListener("click", () => setMode(button.dataset.mode));
-});
-
-elements.directionButtons.forEach(bindDirectionButton);
-
-elements.stopButton.addEventListener("click", async () => {
-  state.activeDirection = null;
-  elements.directionButtons.forEach((button) => button.classList.remove("is-pressed"));
-  try {
-    await sendStop();
-  } catch (error) {
-    elements.feedback.textContent = error.message;
+function handleKeyboardDown(event) {
+  const direction = keyDirectionMap.get(event.code);
+  if (!direction) {
+    return;
   }
+
+  event.preventDefault();
+  if (state.pressedKeys.has(event.code)) {
+    return;
+  }
+
+  state.pressedKeys.add(event.code);
+  void triggerKeyboardStep(direction);
+}
+
+function handleKeyboardUp(event) {
+  if (!keyDirectionMap.has(event.code)) {
+    return;
+  }
+
+  event.preventDefault();
+  state.pressedKeys.delete(event.code);
+}
+
+elements.controlButtons.forEach(bindControlButton);
+
+elements.patrolButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    await handlePatrolStart(button);
+  });
 });
 
-window.addEventListener("mouseup", stopContinuous);
-window.addEventListener("touchend", stopContinuous, { passive: false });
-window.addEventListener("touchcancel", stopContinuous, { passive: false });
-window.addEventListener("blur", stopContinuous);
+elements.patrolStopButton.addEventListener("click", async () => {
+  flashButton(elements.patrolStopButton, 220);
+  await handleStop();
+});
+
+window.addEventListener("blur", () => {
+  state.pressedKeys.clear();
+});
+
+window.addEventListener("keydown", handleKeyboardDown);
+window.addEventListener("keyup", handleKeyboardUp);
+
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") {
-    void stopContinuous();
+    state.pressedKeys.clear();
   }
 });
 
 elements.streamView.addEventListener("load", () => {
-  setStreamStatus("online", "Live video connected.");
+  setStreamStatus("Live video connected.");
 });
 
 elements.streamView.addEventListener("error", () => {
-  setStreamStatus("error", "Could not load the video stream.");
+  setStreamStatus("Could not load the video stream.");
+  scheduleStreamReconnect();
 });
 
-elements.reloadStreamButton.addEventListener("click", reloadStream);
-
-setMode("tap");
 void refreshStatus();
 reloadStream();

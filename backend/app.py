@@ -30,6 +30,10 @@ class MoveCommand(BaseModel):
     direction: str
 
 
+class PatrolCommand(BaseModel):
+    axis: str
+
+
 @app.get("/status")
 def get_status() -> dict[str, object]:
     try:
@@ -58,10 +62,38 @@ def move_continuous(command: MoveCommand) -> dict[str, object]:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@app.post("/move/extreme")
+def move_extreme(command: MoveCommand) -> dict[str, object]:
+    try:
+        return service.move_extreme(command.direction)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @app.post("/stop")
 def stop() -> dict[str, object]:
     try:
         return service.stop()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/patrol/start")
+def patrol_start(command: PatrolCommand) -> dict[str, object]:
+    try:
+        return service.start_patrol(command.axis)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/patrol/stop")
+def patrol_stop() -> dict[str, object]:
+    try:
+        return service.stop_patrol()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
